@@ -14,9 +14,18 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 // ⭐ IMPORTANT: ENABLE CREDENTIALS FOR CLERK COOKIE SESSION
+// const allowedOrigins = [
+//   "http://localhost:5173", // user frontend
+//   "http://localhost:5174", // admin dashboard
+// ];
+
 const allowedOrigins = [
   "http://localhost:5173", // user frontend
   "http://localhost:5174", // admin dashboard
+
+  // ✅ production frontends
+  "https://medicare-fend.netlify.app",  // user frontend
+  "https://medicare-adm.netlify.app" // admin dashboard
 ];
 
 app.use(

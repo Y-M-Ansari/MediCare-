@@ -6,7 +6,9 @@ import { connectDB } from './config/db.js';
 // ⭐ ADD CLERK MIDDLEWARE
 import { clerkMiddleware } from "@clerk/express";
 import appointmentRouter from './routes/appointmentRouter.js';
+import authRouter from './routes/authRouter.js';
 import doctorRouter from './routes/doctorRouter.js';
+import patientRouter from './routes/patientRouter.js';
 import serviceRouter from './routes/serviceRoutes.js';
 import serviceAppointmentRouter from './routes/serviceAppointmentRouter.js';
 
@@ -59,8 +61,10 @@ connectDB();
 
 
 // Routes (unchanged)
+app.use("/api/auth", authRouter);
 app.use("/api/appointments", appointmentRouter);
 app.use("/api/doctors", doctorRouter);
+app.use("/api/patients", patientRouter);
 app.use("/api/services", serviceRouter);
 app.use("/api/service-appointments", serviceAppointmentRouter);
 

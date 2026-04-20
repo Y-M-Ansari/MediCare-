@@ -38,14 +38,14 @@ export default function Navbar() {
       setLastScrollY(currentScrollY);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    returnlogin state */
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
+  /* Sync login state */
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === DOCTOR_TOKEN_KEY || e.key === PATIENT_TOKEN_KEY) {
-        setIs
-    const onStorage = (e) => {
-      if (e.key === STORAGE_KEY) {
-        setIsDoctorLoggedIn(Boolean(e.newValue));
+        setIsLoggedIn(Boolean(e.newValue));
       }
     };
     window.addEventListener("storage", onStorage);

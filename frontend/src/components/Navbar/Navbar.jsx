@@ -1,23 +1,22 @@
-"use client";
-
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
-import { Menu, X, User as UserIcon, Key } from "lucide-react";
-
-// Clerk
-import { SignedIn, SignedOut, useClerk, UserButton } from "@clerk/clerk-react";
+import { Menu, X, Key } from "lucide-react";
 import { navbarStyles } from "../../assets/dummyStyles";
 
-const STORAGE_KEY = "doctorToken_v1";
+const DOCTOR_TOKEN_KEY = "doctorToken_v1";
+const PATIENT_TOKEN_KEY = "patientToken_v1";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [isDoctorLoggedIn, setIsDoctorLoggedIn] = useState(() => {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try {
-      return Boolean(localStorage.getItem(STORAGE_KEY));
+      return Boolean(
+        localStorage.getItem(DOCTOR_TOKEN_KEY) ||
+          localStorage.getItem(PATIENT_TOKEN_KEY)
+      );
     } catch {
       return false;
     }
@@ -25,7 +24,6 @@ export default function Navbar() {
 
   const location = useLocation();
   const navRef = useRef(null);
-  const clerk = useClerk();
   const navigate = useNavigate();
 
   /* Hide / show navbar on scroll */
@@ -40,11 +38,11 @@ export default function Navbar() {
       setLastScrollY(currentScrollY);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
-
-  /* Sync doctor login state */
+    returnlogin state */
   useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === DOCTOR_TOKEN_KEY || e.key === PATIENT_TOKEN_KEY) {
+        setIs
     const onStorage = (e) => {
       if (e.key === STORAGE_KEY) {
         setIsDoctorLoggedIn(Boolean(e.newValue));
@@ -73,9 +71,12 @@ export default function Navbar() {
     { label: "Contact", href: "/contact" },
   ];
 
-  function doctorLogout() {
-    localStorage.removeItem(STORAGE_KEY);
-    setIsDoctorLoggedIn(false);
+  function handleLogout() {
+    localStorage.removeItem(DOCTOR_TOKEN_KEY);
+    localStorage.removeItem(PATIENT_TOKEN_KEY);
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
+    setIsLoggedIn(false);
     navigate("/");
   }
 
@@ -136,33 +137,25 @@ export default function Navbar() {
 
             {/* Right side */}
             <div className={navbarStyles.rightContainer}>
-              {/* ================= PATIENT LOGGED OUT ================= */}
-              <SignedOut>
-                {/* Doctor Admin */}
+              {/* ================= LOGIN / LOGOUT BUTTON ================= */}
+              {!isLoggedIn ? (
                 <Link
                   to="/doctor-admin/login"
-                  className={navbarStyles.doctorAdminButton}
-                >
-                  <UserIcon className={navbarStyles.doctorAdminIcon} />
-                  <span className={navbarStyles.doctorAdminText}>
-                    Doctor Admin
-                  </span>
-                </Link>
-
-                {/* Patient Login */}
-                <button
-                  onClick={() => clerk.openSignIn()}
                   className={navbarStyles.loginButton}
                 >
                   <Key className={navbarStyles.loginIcon} />
                   Login
+                </Link>
+              ) : (
+                <button
+                  onClick={handleLogout}
+                  className={navbarStyles.loginButton}
+                  style={{ backgroundColor: "#ef4444", borderColor: "#ef4444" }}
+                >
+                  <Key className={navbarStyles.loginIcon} />
+                  Logout
                 </button>
-              </SignedOut>
-
-              {/* ================= PATIENT LOGGED IN ================= */}
-              <SignedIn>
-                <UserButton afterSignOutUrl="/" />
-              </SignedIn>
+              )}
 
               {/* Mobile/Tablet toggle */}
               <button
@@ -200,27 +193,28 @@ export default function Navbar() {
                   </Link>
                 );
               })}
-              {/* Patient logged out */}
-              <SignedOut>
+              {/* Login/Logout button in mobile menu */}
+              {!isLoggedIn && (
                 <Link
                   to="/doctor-admin/login"
                   onClick={() => setIsOpen(false)}
-                  className={navbarStyles.mobileDoctorAdminButton}
+                  className={navbarStyles.mobileLoginButton}
                 >
-                  Doctor Admin
+                  Login
                 </Link>
-                <div className={navbarStyles.mobileLoginContainer}>
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      clerk.openSignIn();
-                    }}
-                    className={navbarStyles.mobileLoginButton}
-                  >
-                    Login
-                  </button>
-                </div>
-              </SignedOut>
+              )}
+              {isLoggedIn && (
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className={navbarStyles.mobileLoginButton}
+                  style={{ backgroundColor: "#ef4444" }}
+                >
+                  Logout
+                </button>
+              )}
             </div>
           )}
         </div>

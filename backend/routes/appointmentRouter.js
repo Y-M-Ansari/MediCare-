@@ -1,6 +1,7 @@
 // routes/appointmentRouter.js
 import express from "express";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import unifiedAuth from "../middlewares/unifiedAuth.js";
 
 import {
   getAppointments,
@@ -35,19 +36,17 @@ appointmentRouter.get("/stats/summary", getStats);
    AUTHENTICATED ROUTES
    ========================= */
 
-// create appointment
+// create appointment (unified auth - Clerk or JWT)
 appointmentRouter.post(
   "/",
-  clerkMiddleware(),
-  requireAuth(),
+  unifiedAuth,
   createAppointment
 );
 
 // 🔥 IMPORTANT: /me MUST COME BEFORE /:id
 appointmentRouter.get(
   "/me",
-  clerkMiddleware(),
-  requireAuth(),
+  unifiedAuth,
   getAppointmentsByPatient
 );
 // appointmentRouter.get("/:id", getAppointmentById);
@@ -57,7 +56,7 @@ appointmentRouter.get(
 );
 
 appointmentRouter.post("/:id/cancel", cancelAppointment);
-appointmentRouter.get("/paitents/count",getRegisteredUserCount); 
+appointmentRouter.get("/patients/count",getRegisteredUserCount); 
 appointmentRouter.put("/:id", updateAppointment);
 
 

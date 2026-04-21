@@ -115,6 +115,16 @@ export default function DoctorDetail() {
   const { getToken, isLoaded: authLoaded } = useAuth();
   const { isSignedIn, user, isLoaded: userLoaded } = useUser();
 
+  // ✅ JWT Token auth check (for patient login via our system)
+  const [jwtAuth, setJwtAuth] = useState(() => {
+    try {
+      const patientToken = localStorage.getItem("patientToken_v1");
+      return !!patientToken;
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
     setIsVisible(true);
   }, []);
@@ -242,7 +252,9 @@ export default function DoctorDetail() {
       return;
     }
 
-    if (!isSignedIn) {
+    // ✅ Check for either Clerk auth OR JWT patient token
+    const isAuthenticated = isSignedIn || jwtAuth;
+    if (!isAuthenticated) {
       toast.error("You must sign in to create an appointment.", {
         position: "top-center",
         autoClose: 2200,
@@ -287,7 +299,11 @@ export default function DoctorDetail() {
     };
 
     try {
-      const token = await getToken();
+      // ✅ Use JWT token if available (patient login), otherwise get Clerk token
+      let token = localStorage.getItem("patientToken_v1");
+      if (!token) {
+        token = await getToken();
+      }
       if (!token) {
         throw new Error("Failed to obtain authentication token.");
       }

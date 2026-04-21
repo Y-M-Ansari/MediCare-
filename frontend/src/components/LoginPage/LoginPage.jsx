@@ -5,10 +5,12 @@ import logo from "../../assets/logo.png";
 import { ArrowLeft } from "lucide-react";
 import { loginPageStyles, toastStyles } from "../../assets/dummyStyles";
 
-const STORAGE_KEY = "doctorToken_v1";
+const DOCTOR_TOKEN_KEY = "doctorToken_v1";
+const PATIENT_TOKEN_KEY = "patientToken_v1";
 
 export default function LoginPage({ apiBase }) {
   const API_BASE = apiBase || import.meta.env.VITE_API_URL;
+  const [role, setRole] = useState(""); // "doctor" or "patient"
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
@@ -20,6 +22,13 @@ export default function LoginPage({ apiBase }) {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (!role) {
+      toast.error("Please select Doctor or Patient role", {
+        style: toastStyles.errorToast,
+      });
+      return;
+    }
+
     if (!formData.email || !formData.password) {
       toast.error("All fields are required!", {
         style: toastStyles.errorToast,
@@ -29,15 +38,27 @@ export default function LoginPage({ apiBase }) {
 
     setBusy(true);
     try {
-      const res = await fetch(`${API_BASE}/api/doctors/login`, {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          role,
+        }),
       });
 
-      const json = await res.json().catch(() => null);
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        console.error("Failed to parse login response as JSON");
+        toast.error("Invalid server response");
+        setBusy(false);
+        return;
+      }
 
       if (!res.ok) {
+        console.error("Login error response:", json);
         toast.error(json?.message || "Login failed", { duration: 4000 });
         setBusy(false);
         return;
@@ -48,34 +69,44 @@ export default function LoginPage({ apiBase }) {
       // token
       const token = json?.token || json?.data?.token;
       if (!token) {
+        console.error("Token missing in login response:", json);
         toast.error("Authentication token missing");
         setBusy(false);
         return;
       }
 
-      // doctor id (supports all common API shapes)
-      const doctorId =
-        json?.data?._id || json?.doctor?._id || json?.data?.doctor?._id;
+      // user id
+      const userId =
+        json?.data?._id || json?.doctor?._id || json?.patient?._id;
 
-      if (!doctorId) {
-        toast.error("Doctor ID missing from server response");
+      if (!userId) {
+        console.error("User ID missing in login response:", json);
+        toast.error("User ID missing from server response");
         setBusy(false);
         return;
       }
 
-      // store token
-      localStorage.setItem(STORAGE_KEY, token);
+      // Store token based on role
+      const tokenKey = role === "doctor" ? DOCTOR_TOKEN_KEY : PATIENT_TOKEN_KEY;
+      localStorage.setItem(tokenKey, token);
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userId", userId);
+      
       window.dispatchEvent(
-        new StorageEvent("storage", { key: STORAGE_KEY, newValue: token }),
+        new StorageEvent("storage", { key: tokenKey, newValue: token })
       );
 
       toast.success("Login successful — redirecting...", {
         style: toastStyles.successToast,
       });
 
-      // ✅ Navigate to dynamic route
+      // ✅ Navigate to dynamic route based on role
       setTimeout(() => {
-        navigate(`/doctor-admin/${doctorId}`);
+        if (role === "doctor") {
+          navigate(`/doctor-admin/${userId}`);
+        } else {
+          navigate(`/`);
+        }
       }, 700);
     } catch (err) {
       console.error("login error", err);
@@ -99,13 +130,59 @@ export default function LoginPage({ apiBase }) {
 
       <div className={loginPageStyles.loginCard}>
         <div className={loginPageStyles.logoContainer}>
-          <img src={logo} alt="Doctor Logo" className={loginPageStyles.logo} />
+          <img src={logo} alt="Logo" className={loginPageStyles.logo} />
         </div>
 
-        <h2 className={loginPageStyles.title}>Doctor Admin</h2>
+        <h2 className={loginPageStyles.title}>MediCare Login</h2>
         <p className={loginPageStyles.subtitle}>
-          Sign in to manage your profile & schedule
+          Sign in to your account
         </p>
+
+        {/* Role Selector */}
+        <div style={{ marginBottom: "1.5rem", display: "flex", gap: "1rem" }}>
+          <button
+            type="button"
+            onClick={() => setRole("doctor")}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              borderRadius: "0.5rem",
+              border: "2px solid",
+              borderColor: role === "doctor" ? "#059669" : "#e5e7eb",
+              backgroundColor: role === "doctor" ? "#ecfdf5" : "#f9fafb",
+              color: role === "doctor" ? "#059669" : "#6b7280",
+              fontWeight: role === "doctor" ? "600" : "500",
+              cursor: "pointer",
+              transition: "all 0.3s",
+            }}
+          >
+            Doctor
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("patient")}
+            style={{
+              flex: 1,
+              padding: "0.75rem",
+              borderRadius: "0.5rem",
+              border: "2px solid",
+              borderColor: role === "patient" ? "#059669" : "#e5e7eb",
+              backgroundColor: role === "patient" ? "#ecfdf5" : "#f9fafb",
+              color: role === "patient" ? "#059669" : "#6b7280",
+              fontWeight: role === "patient" ? "600" : "500",
+              cursor: "pointer",
+              transition: "all 0.3s",
+            }}
+          >
+            Patient
+          </button>
+        </div>
+
+        {role && (
+          <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem", textAlign: "center" }}>
+            Logging in as <strong>{role === "doctor" ? "Doctor" : "Patient"}</strong>
+          </p>
+        )}
 
         <form onSubmit={handleLogin} className={loginPageStyles.form}>
           <input
@@ -130,12 +207,24 @@ export default function LoginPage({ apiBase }) {
 
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || !role}
             className={loginPageStyles.submitButton}
+            style={{ opacity: !role ? 0.6 : 1, cursor: !role ? "not-allowed" : "pointer" }}
           >
             {busy ? "Signing in…" : "Login"}
           </button>
         </form>
+
+        <p style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.875rem", color: "#6b7280" }}>
+          {role === "patient" && (
+            <>
+              Don't have an account? <a href="/signup" style={{ color: "#059669", fontWeight: "600" }}>Sign up here</a>
+            </>
+          )}
+          {role === "doctor" && (
+            <span>Contact admin to register your account</span>
+          )}
+        </p>
       </div>
     </div>
   );

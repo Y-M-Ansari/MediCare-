@@ -154,6 +154,15 @@ export default function AppointmentPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
 
+  // ✅ JWT Token auth check (for patient login via our system)
+  const [jwtToken, setJwtToken] = useState(() => {
+    try {
+      return localStorage.getItem("patientToken_v1");
+    } catch {
+      return null;
+    }
+  });
+
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [loadingServices, setLoadingServices] = useState(false);
 
@@ -172,15 +181,18 @@ export default function AppointmentPage() {
     setLoadingDoctors(true);
     setError(null);
 
-    let token = null;
-    try {
-      token = await getToken();
-      console.log(
-        "Clerk token (frontend):",
-        token ? `${token.slice(0, 20)}...` : null,
-      );
-    } catch (err) {
-      console.error("Failed to get Clerk token (frontend):", err);
+    // ✅ Use JWT token if available (patient login), otherwise try Clerk token
+    let token = jwtToken;
+    if (!token) {
+      try {
+        token = await getToken();
+        console.log(
+          "Clerk token (frontend):",
+          token ? `${token.slice(0, 20)}...` : null,
+        );
+      } catch (err) {
+        console.error("Failed to get Clerk token (frontend):", err);
+      }
     }
 
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -256,7 +268,7 @@ export default function AppointmentPage() {
     } finally {
       setLoadingDoctors(false);
     }
-  }, [isLoaded, getToken, user]);
+  }, [isLoaded, getToken, user, jwtToken]);
 
   /* -------------------- Fetch Service Appointments -------------------- */
   const loadServiceAppointments = useCallback(async () => {
@@ -264,11 +276,14 @@ export default function AppointmentPage() {
     setLoadingServices(true);
     setError(null);
 
-    let token = null;
-    try {
-      token = await getToken();
-    } catch (err) {
-      console.error("Failed to get Clerk token (frontend): err", err);
+    // ✅ Use JWT token if available (patient login), otherwise try Clerk token
+    let token = jwtToken;
+    if (!token) {
+      try {
+        token = await getToken();
+      } catch (err) {
+        console.error("Failed to get Clerk token (frontend): err", err);
+      }
     }
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     console.log("Outgoing headers for /api/service-appointments/me:", headers);
@@ -330,7 +345,7 @@ export default function AppointmentPage() {
     } finally {
       setLoadingServices(false);
     }
-  }, [isLoaded, getToken, user]);
+  }, [isLoaded, getToken, user, jwtToken]);
 
   /* -------------------- Combined loader -------------------- */
   useEffect(() => {

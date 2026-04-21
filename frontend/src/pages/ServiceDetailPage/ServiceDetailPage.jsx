@@ -278,16 +278,27 @@ export default function ServiceDetail() {
       return;
     }
 
-    // Require Clerk sign-in: show toast and abort if not signed in
-    if (!isSignedIn) {
+    // Allow Clerk sign-in or local JWT patient token
+    const jwtToken = (() => {
+      try {
+        return localStorage.getItem("patientToken_v1");
+      } catch (e) {
+        return null;
+      }
+    })();
+
+    if (!isSignedIn && !jwtToken) {
       toast.error("Please sign in to create a booking.");
       return;
     }
 
     setSubmitting(true);
     try {
-      // get Clerk token (frontend)
-      const token = await getToken().catch(() => null);
+      // prefer local JWT patient token, otherwise get Clerk token
+      let token = jwtToken || null;
+      if (!token && getToken) {
+        token = await getToken().catch(() => null);
+      }
 
       // payload (replace the existing payload in ServiceDetail.jsx)
       const payload = {
@@ -331,13 +342,10 @@ export default function ServiceDetail() {
         Accept: "application/json",
       };
 
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      } else {
-        // No token despite isSignedIn true — show warning and force re-login
-        toast.error(
-          "Authentication token not available. Please sign in again.",
-        );
+      if (token) headers.Authorization = `Bearer ${token}`;
+      else {
+        // token should exist due to earlier guard, but safe-check
+        toast.error("Authentication token not available. Please sign in.");
         setSubmitting(false);
         return;
       }

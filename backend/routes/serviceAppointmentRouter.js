@@ -1,6 +1,7 @@
 // routes/serviceAppointmentRouter.js
 import express from "express";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import unifiedAuth from "../middlewares/unifiedAuth.js";
 
 import {
   getServiceAppointments,
@@ -20,13 +21,12 @@ router.get("/", getServiceAppointments);
 router.get("/confirm", confirmServicePayment);
 router.get("/stats/summary", getServiceAppointmentStats);
 
-router.post("/", clerkMiddleware(), requireAuth(), createServiceAppointment);
+router.post("/", unifiedAuth, createServiceAppointment);
 
 // 🔥 MUST BE BEFORE :id
 router.get(
   "/me",
-  clerkMiddleware(),
-  requireAuth(),
+  unifiedAuth,
   getServiceAppointmentsByPatient
 );
 

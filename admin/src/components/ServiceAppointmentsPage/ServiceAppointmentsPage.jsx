@@ -553,17 +553,27 @@ export default function ServiceAppointmentsPage() {
 
   // cancel -> POST /api/service-appointments/:id/cancel
   async function cancelRemote(id) {
+    console.log("cancelRemote called with id:", id);
     const appt = appointments.find((a) => a.id === id);
-    if (!appt) return;
-    if (appt.status === "Canceled") return;
+    console.log("Found appointment:", appt);
+    if (!appt) {
+      console.warn("Appointment not found in state");
+      return;
+    }
+    if (appt.status === "Canceled") {
+      console.log("Appointment already canceled");
+      return;
+    }
     if (
       !window.confirm(
         `Mark appointment for ${appt.patientName} on ${formatDateNice(
           appt.date
         )} as CANCELED?`
       )
-    )
+    ) {
+      console.log("User cancelled the confirmation dialog");
       return;
+    }
 
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a))
@@ -571,6 +581,7 @@ export default function ServiceAppointmentsPage() {
     pushToast("Canceling", `Appointment #${id} is being canceled`);
 
     try {
+      console.log("Sending cancel request to:", `${API_BASE}/api/service-appointments/${id}/cancel`);
       const res = await fetch(
         `${API_BASE}/api/service-appointments/${id}/cancel`,
         {
@@ -578,12 +589,15 @@ export default function ServiceAppointmentsPage() {
           headers: { "Content-Type": "application/json" },
         }
       );
+      console.log("Cancel response status:", res.status);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `Cancel failed (${res.status})`);
       }
       const body = await res.json();
+      console.log("Cancel response body:", body);
       const updated = extractUpdated(body);
+      console.log("Extracted updated appointment:", updated);
       setAppointments((prev) =>
         prev.map((a) =>
           a.id === id
@@ -597,7 +611,7 @@ export default function ServiceAppointmentsPage() {
       );
       pushToast("Canceled", `Appointment #${id} canceled`);
     } catch (err) {
-      console.error("cancelRemote:", err);
+      console.error("cancelRemote error:", err);
       pushToast("Cancel failed", err.message || "Failed to cancel — reloading");
       await fetchAppointments();
     }
@@ -816,7 +830,11 @@ export default function ServiceAppointmentsPage() {
 
                         <div className="ml-3">
                           <button
-                            onClick={() => cancelRemote(a.id)}
+                            type="button"
+                            onClick={() => {
+                              console.log("Cancel button clicked for appointment:", a.id);
+                              cancelRemote(a.id);
+                            }}
                             disabled={isLocked}
                             className={serviceAppointmentsStyles.cancelButton(isLocked)}
                             title={

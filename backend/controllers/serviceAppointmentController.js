@@ -65,8 +65,9 @@ function resolveClerkUserId(req) {
 export const createServiceAppointment = async (req, res) => {
   try {
     const body = req.body || {};
-    const clerkUserId = resolveClerkUserId(req);
-    if (!clerkUserId)
+    // ✅ Use unified auth (works with both Clerk and JWT tokens)
+    const userId = req.auth?.userId || null;
+    if (!userId)
       return res
         .status(401)
         .json({
@@ -155,7 +156,7 @@ export const createServiceAppointment = async (req, res) => {
     try {
       const existing = await ServiceAppointment.findOne({
         serviceId: String(serviceId),
-        createdBy: clerkUserId,
+        createdBy: userId,
         date: String(date),
         hour: Number(finalHour),
         minute: Number(finalMinute),
@@ -231,7 +232,7 @@ export const createServiceAppointment = async (req, res) => {
       minute: Number(finalMinute),
       ampm: finalAmpm,
       fees: numericAmount,
-      createdBy: clerkUserId,
+      createdBy: userId,
       notes: notes || "",
     };
 
@@ -579,9 +580,16 @@ export const cancelServiceAppointment = async (req, res) => {
         });
 
     appt.status = "Canceled";
-    if (appt.payment)
-      appt.payment.status =
-        appt.payment.status === "Confirmed" ? "Canceled" : "Pending";
+    if (appt.payment) {
+      const current = String(appt.payment.status || "").toLowerCase();
+      // payment.status enum for serviceAppointment is ["Pending","Paid","Failed","Refunded"]
+      // avoid setting an invalid value like "Canceled" which would fail validation
+      if (current === "confirmed" || current === "paid") {
+        appt.payment.status = "Refunded";
+      } else {
+        appt.payment.status = "Pending";
+      }
+    }
     await appt.save();
     return res.json({ success: true, data: appt });
   } catch (err) {

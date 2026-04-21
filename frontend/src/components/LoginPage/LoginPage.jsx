@@ -47,9 +47,18 @@ export default function LoginPage({ apiBase }) {
         }),
       });
 
-      const json = await res.json().catch(() => null);
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        console.error("Failed to parse login response as JSON");
+        toast.error("Invalid server response");
+        setBusy(false);
+        return;
+      }
 
       if (!res.ok) {
+        console.error("Login error response:", json);
         toast.error(json?.message || "Login failed", { duration: 4000 });
         setBusy(false);
         return;
@@ -60,6 +69,7 @@ export default function LoginPage({ apiBase }) {
       // token
       const token = json?.token || json?.data?.token;
       if (!token) {
+        console.error("Token missing in login response:", json);
         toast.error("Authentication token missing");
         setBusy(false);
         return;
@@ -70,6 +80,7 @@ export default function LoginPage({ apiBase }) {
         json?.data?._id || json?.doctor?._id || json?.patient?._id;
 
       if (!userId) {
+        console.error("User ID missing in login response:", json);
         toast.error("User ID missing from server response");
         setBusy(false);
         return;

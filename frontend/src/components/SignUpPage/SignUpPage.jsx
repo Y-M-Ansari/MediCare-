@@ -73,9 +73,18 @@ export default function SignUpPage({ apiBase }) {
         }),
       });
 
-      const json = await res.json().catch(() => null);
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        console.error("Failed to parse response as JSON");
+        toast.error("Invalid server response");
+        setBusy(false);
+        return;
+      }
 
       if (!res.ok) {
+        console.error("Signup error response:", json);
         toast.error(json?.message || "Signup failed", { duration: 4000 });
         setBusy(false);
         return;
@@ -84,6 +93,7 @@ export default function SignUpPage({ apiBase }) {
       // token
       const token = json?.token || json?.data?.token;
       if (!token) {
+        console.error("Token missing in response:", json);
         toast.error("Authentication token missing");
         setBusy(false);
         return;
@@ -91,6 +101,7 @@ export default function SignUpPage({ apiBase }) {
 
       const patientId = json?.data?._id;
       if (!patientId) {
+        console.error("Patient ID missing in response:", json);
         toast.error("Patient ID missing from server response");
         setBusy(false);
         return;

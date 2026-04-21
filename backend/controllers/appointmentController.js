@@ -172,11 +172,12 @@ export const createAppointment = async (req, res) => {
       doctorImagePublicId: doctorImagePublicIdFromBody,
     } = req.body || {};
 
-    const clerkUserId = resolveClerkUserId(req);
-    if (!clerkUserId)
+    // ✅ Use unified auth (works with both Clerk and JWT tokens)
+    const userId = req.auth?.userId || null;
+    if (!userId)
       return res
         .status(401)
-        .json({ success: false, message: "Authentication required (Clerk)" });
+        .json({ success: false, message: "Authentication required" });
 
     if (!doctorId || !patientName || !mobile || !date || !time) {
       return res.status(400).json({
@@ -195,7 +196,7 @@ export const createAppointment = async (req, res) => {
     // Duplicate booking prevention
     const existingBooking = await Appointment.findOne({
       doctorId,
-      createdBy: clerkUserId,
+      createdBy: userId,
       date: String(date),
       time: String(time),
       status: { $ne: "Canceled" },
@@ -275,7 +276,7 @@ export const createAppointment = async (req, res) => {
         amount: numericFee,
       },
       notes: notes || "",
-      createdBy: clerkUserId,
+      createdBy: userId,
       owner: resolvedOwner,
       sessionId: null,
     };
@@ -349,7 +350,7 @@ export const createAppointment = async (req, res) => {
           speciality: speciality || "",
           patientName: base.patientName,
           mobile: base.mobile,
-          clerkUserId: clerkUserId || "",
+          clerkUserId: userId || "",
         },
       });
     } catch (stripeErr) {

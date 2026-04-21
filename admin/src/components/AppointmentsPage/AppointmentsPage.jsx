@@ -152,8 +152,13 @@ export default function AppointmentsPage() {
 
   // Admin cancel (calls backend POST /api/appointments/:id/cancel)
   async function adminCancelAppointment(id) {
+    console.log("adminCancelAppointment called with id:", id);
     const appt = appointments.find((x) => x.id === id);
-    if (!appt) return;
+    console.log("Found appointment:", appt);
+    if (!appt) {
+      console.warn("Appointment not found in state");
+      return;
+    }
 
     const statusLower = (appt.status || "").toLowerCase();
     const isCancelled =
@@ -161,14 +166,20 @@ export default function AppointmentsPage() {
     const isCompleted = statusLower === "completed";
 
     // don't allow cancel if already cancelled OR completed
-    if (isCancelled || isCompleted) return;
+    if (isCancelled || isCompleted) {
+      console.log("Appointment already cancelled or completed");
+      return;
+    }
 
     const ok = window.confirm(
       `As admin, mark appointment for ${appt.patientName} with ${
         appt.doctorName
       } on ${formatDateISO(appt.slot.date)} at ${appt.slot.time} as CANCELLED?`
     );
-    if (!ok) return;
+    if (!ok) {
+      console.log("User cancelled the confirmation dialog");
+      return;
+    }
 
     try {
       // Optimistic UI update
@@ -177,15 +188,18 @@ export default function AppointmentsPage() {
       );
       setShowAll(true);
 
+      console.log("Sending cancel request to:", `${API_BASE}/api/appointments/${id}/cancel`);
       const res = await fetch(`${API_BASE}/api/appointments/${id}/cancel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
+      console.log("Cancel response status:", res.status);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `Cancel failed (${res.status})`);
       }
       const data = await res.json();
+      console.log("Cancel response data:", data);
       const updated = data?.appointment || data?.appointments || null;
       if (updated) {
         // update local state with authoritative status
@@ -391,7 +405,11 @@ export default function AppointmentsPage() {
                     <div className="flex items-center gap-2">
                       {isAdmin && (
                         <button
-                          onClick={() => adminCancelAppointment(a.id)}
+                          type="button"
+                          onClick={() => {
+                            console.log("Admin cancel button clicked for appointment:", a.id);
+                            adminCancelAppointment(a.id);
+                          }}
                           title={
                             isDisabled
                               ? isCompleted

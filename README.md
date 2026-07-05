@@ -1,5 +1,12 @@
 # Medicare Full-Stack Project
 
+## Live Demo Links
+
+- Patient / Doctor frontend: https://medicare-fend.netlify.app/
+- Admin dashboard: https://medicare-adm.netlify.app/
+
+![Demo App](frontend/public/screenshot-for-readme.png)
+
 ## Overview
 
 This repository contains a full-stack healthcare booking application with three primary parts:

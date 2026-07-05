@@ -1,12 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API_BASE = "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 const VerifyServicePaymentPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [status, setStatus] = useState("verifying");
+  const [message, setMessage] = useState("Confirming your payment...");
 
   useEffect(() => {
     let cancelled = false;
@@ -17,18 +19,22 @@ const VerifyServicePaymentPage = () => {
 
       if (location.pathname === "/service-appointment/cancel") {
         if (!cancelled) {
-          navigate("/appointments?service_payment=Cancelled", {
-            replace: true,
-          });
+          setStatus("cancelled");
+          setMessage("Payment was cancelled.");
+          window.setTimeout(() => {
+            window.location.replace("/appointments?service_payment=Cancelled");
+          }, 1200);
         }
         return;
       }
 
       if (!sessionId) {
         if (!cancelled) {
-          navigate("/appointments?service_payment=Failed", {
-            replace: true,
-          });
+          setStatus("failed");
+          setMessage("We could not verify your payment. Please try again.");
+          window.setTimeout(() => {
+            window.location.replace("/appointments?service_payment=Failed");
+          }, 1200);
         }
         return;
       }
@@ -38,28 +44,33 @@ const VerifyServicePaymentPage = () => {
           `${API_BASE}/api/service-appointments/confirm`,
           {
             params: { session_id: sessionId },
-            timeout: 15000,
+            timeout: 20000,
           }
         );
 
         if (cancelled) return;
 
         if (res?.data?.success) {
-          // ✅ Service payment confirmed
-          navigate("/appointments?service_payment=Paid", {
-            replace: true,
-          });
+          setStatus("success");
+          setMessage("Payment confirmed. Redirecting to your appointments...");
+          window.setTimeout(() => {
+            window.location.replace("/appointments?service_payment=Paid");
+          }, 1000);
         } else {
-          navigate("/appointments?service_payment=Failed", {
-            replace: true,
-          });
+          setStatus("failed");
+          setMessage("Payment verification failed. Please contact support if this keeps happening.");
+          window.setTimeout(() => {
+            window.location.replace("/appointments?service_payment=Failed");
+          }, 1200);
         }
       } catch (error) {
         console.error("Service payment verification failed:", error);
         if (!cancelled) {
-          navigate("/appointments?service_payment=Failed", {
-            replace: true,
-          });
+          setStatus("failed");
+          setMessage("Payment verification failed. Please contact support if this keeps happening.");
+          window.setTimeout(() => {
+            window.location.replace("/appointments?service_payment=Failed");
+          }, 1200);
         }
       }
     };
@@ -71,7 +82,16 @@ const VerifyServicePaymentPage = () => {
     };
   }, [location, navigate]);
 
-  return null;
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: "24px" }}>
+      <div style={{ maxWidth: "420px", width: "100%", background: "white", borderRadius: "16px", padding: "28px", boxShadow: "0 12px 40px rgba(0,0,0,0.08)", textAlign: "center" }}>
+        <h2 style={{ margin: "0 0 12px", color: "#065f46", fontSize: "24px" }}>
+          {status === "success" ? "Payment confirmed" : status === "cancelled" ? "Payment cancelled" : status === "failed" ? "Payment issue" : "Processing payment"}
+        </h2>
+        <p style={{ margin: 0, color: "#475569", lineHeight: 1.6 }}>{message}</p>
+      </div>
+    </div>
+  );
 };
 
 export default VerifyServicePaymentPage;

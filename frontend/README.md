@@ -1,16 +1,31 @@
-# React + Vite
+# Medicare Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the patient/doctor-facing React app for the Medicare project.
 
-Currently, two official plugins are available:
+## Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Patient / Doctor frontend: https://medicare-fend.netlify.app/
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Install dependencies and run the frontend from the `frontend/` folder:
 
-## Expanding the ESLint configuration
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Environment
+
+Create a `frontend/.env` file with:
+
+```env
+VITE_API_URL=http://localhost:4000
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+```
+
+## Notes
+
+- The app uses Clerk for authentication and communicates with the backend API.
+- Some code paths also default to `http://localhost:4000` when `VITE_API_URL` is not set.

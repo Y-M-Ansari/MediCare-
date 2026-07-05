@@ -218,6 +218,18 @@ export default function DashboardPage({ apiBase }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API, doctorId]);
 
+  /* -------------------- Polling for Real-time Updates -------------------- */
+  useEffect(() => {
+    if (!doctorId) return;
+
+    // Poll every 20 seconds to check for new appointments or status changes
+    const pollInterval = setInterval(() => {
+      fetchAppointments();
+    }, 20000); // 20 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [doctorId, API]);
+
   // computed values
   const sorted = useMemo(() => {
     return [...appointments].sort(

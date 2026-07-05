@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import {
   CalendarDays,
   Clock,
@@ -27,41 +28,82 @@ function pad(n) {
 }
 
 function parseDateTime(dateStr, timeStr) {
-  const fast = new Date(`${dateStr} ${timeStr}`);
-  if (!isNaN(fast)) return fast;
+  // Handle empty inputs
+  if (!dateStr || !timeStr) return new Date(9999, 0, 1); // Far future if missing
 
-  const parts = (dateStr || "").split(" ");
-  if (parts.length === 3) {
-    const [d, m, y] = parts;
-    const months = {
-      Jan: 0,
-      Feb: 1,
-      Mar: 2,
-      Apr: 3,
-      May: 4,
-      Jun: 5,
-      Jul: 6,
-      Aug: 7,
-      Sep: 8,
-      Oct: 9,
-      Nov: 10,
-      Dec: 11,
-    };
-    const month = months[m];
-    let [t, ampm] = (timeStr || "").split(" ");
-    let [hh, mm] = (t || "0:00").split(":");
-    hh = Number(hh || 0);
-    mm = Number(mm || 0);
+  // Parse YYYY-MM-DD format with HH:MM AM/PM
+  if (dateStr && dateStr.includes("-")) {
+    const dateParts = dateStr.split("-");
+    if (dateParts.length === 3) {
+      const year = Number(dateParts[0]);
+      const month = Number(dateParts[1]) - 1; // JavaScript months are 0-indexed
+      const day = Number(dateParts[2]);
 
-    if (ampm === "PM" && hh !== 12) hh += 12;
-    if (ampm === "AM" && hh === 12) hh = 0;
+      // Parse time string in HH:MM AM/PM format
+      let hours = 0, minutes = 0;
+      if (timeStr && timeStr.trim()) {
+        const timeParts = timeStr.trim().split(/\s+/);
+        if (timeParts.length >= 1) {
+          const [hm = "0:00", ampm = ""] = timeParts;
+          const [h = "0", m = "0"] = hm.split(":");
+          hours = Number(h) || 0;
+          minutes = Number(m) || 0;
 
-    return new Date(Number(y), month, Number(d), hh, mm);
+          // Convert to 24-hour format
+          if (ampm.toUpperCase() === "PM" && hours !== 12) {
+            hours += 12;
+          }
+          if (ampm.toUpperCase() === "AM" && hours === 12) {
+            hours = 0;
+          }
+        }
+      }
+
+      const result = new Date(year, month, day, hours, minutes, 0);
+      if (!isNaN(result.getTime())) return result;
+    }
   }
 
-  const iso = new Date(dateStr);
-  if (!isNaN(iso)) return iso;
-  return new Date();
+  // Try direct parsing with time as fallback
+  const fast = new Date(`${dateStr} ${timeStr}`);
+  if (!isNaN(fast.getTime()) && fast.getTime() > 0) return fast;
+
+  // Try "5 May 2026" or "5 May 2026" format with time
+  const parts = (dateStr || "").trim().split(/\s+/);
+  if (parts.length >= 3) {
+    const [d, m, y] = parts;
+    const months = {
+      jan: 0, january: 0,
+      feb: 1, february: 1,
+      mar: 2, march: 2,
+      apr: 3, april: 3,
+      may: 4,
+      jun: 5, june: 5,
+      jul: 7, july: 7,
+      aug: 8, august: 8,
+      sep: 9, september: 9,
+      oct: 10, october: 10,
+      nov: 11, november: 11,
+      dec: 12, december: 12,
+    };
+    const month = months[m.toLowerCase()];
+    if (month !== undefined) {
+      let [t, ampm] = (timeStr || "").split(/\s+/);
+      let [hh, mm] = (t || "0:00").split(":");
+      hh = Number(hh || 0);
+      mm = Number(mm || 0);
+
+      if (ampm === "PM" && hh !== 12) hh += 12;
+      if (ampm === "AM" && hh === 12) hh = 0;
+
+      const result = new Date(Number(y), month, Number(d), hh, mm);
+      if (!isNaN(result.getTime())) return result;
+    }
+  }
+
+  // If all parsing fails, return a far future date instead of today
+  // This prevents newly booked appointments from being marked as completed
+  return new Date(9999, 0, 1);
 }
 
 function computeStatus(item) {
@@ -153,6 +195,7 @@ const StatusBadge = ({ itemStatus }) => {
 export default function AppointmentPage() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
+  const location = useLocation();
 
   // ✅ JWT Token auth check (for patient login via our system)
   const [jwtToken, setJwtToken] = useState(() => {
@@ -358,6 +401,46 @@ export default function AppointmentPage() {
     loadDoctorAppointments,
     loadServiceAppointments,
   ]);
+
+  /* -------------------- Handle Payment Success & Refetch -------------------- */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const paymentStatus = params.get("payment_status");
+    const servicePaymentStatus = params.get("service_payment");
+
+    if (paymentStatus === "Paid") {
+      // Doctor appointment payment successful - refetch appointments to get updated status
+      toast.success("Payment successful! Appointment confirmed.", {
+        duration: 4000,
+      });
+      loadDoctorAppointments();
+      loadServiceAppointments();
+    } else if (servicePaymentStatus === "Paid") {
+      // Service appointment payment successful - refetch appointments to get updated status
+      toast.success("Payment successful! Service booking confirmed.", {
+        duration: 4000,
+      });
+      loadDoctorAppointments();
+      loadServiceAppointments();
+    } else if (paymentStatus === "Cancelled" || servicePaymentStatus === "Cancelled") {
+      toast.error("Payment was cancelled.", { duration: 4000 });
+    } else if (paymentStatus === "Failed" || servicePaymentStatus === "Failed") {
+      toast.error("Payment verification failed.", { duration: 4000 });
+    }
+  }, [location.search, loadDoctorAppointments, loadServiceAppointments]);
+
+  /* -------------------- Polling for Real-time Updates -------------------- */
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
+    // Poll every 15 seconds to check for updates (doctor status changes, etc)
+    const pollInterval = setInterval(() => {
+      loadDoctorAppointments();
+      loadServiceAppointments();
+    }, 15000); // 15 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isLoaded, isSignedIn, loadDoctorAppointments, loadServiceAppointments]);
 
   /* -------------------- Normalization for UI -------------------- */
   function normalizeRescheduled(rt) {

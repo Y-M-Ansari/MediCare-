@@ -240,10 +240,10 @@ export const createServiceAppointment = async (req, res) => {
     if (numericAmount === 0) {
       const created = await ServiceAppointment.create({
         ...base,
-        status: "Pending",
+        status: "Confirmed",
         payment: {
           method: "Cash",
-          status: "Pending",
+          status: "Paid",
           amount: 0,
           paidAt: new Date(),
         },
@@ -401,7 +401,7 @@ export const confirmServicePayment = async (req, res) => {
       { "payment.sessionId": session_id },
       {
         $set: {
-          "payment.status": "Confirmed",
+          "payment.status": "Paid",
           "payment.providerId": session.payment_intent || "",
           "payment.paidAt": new Date(),
           status: "Confirmed",
@@ -415,7 +415,7 @@ export const confirmServicePayment = async (req, res) => {
         { _id: session.metadata.appointmentId },
         {
           $set: {
-            "payment.status": "Confirmed",
+            "payment.status": "Paid",
             "payment.providerId": session.payment_intent || "",
             "payment.paidAt": new Date(),
             status: "Confirmed",

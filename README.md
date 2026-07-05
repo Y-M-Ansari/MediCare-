@@ -5,7 +5,7 @@
 - Patient / Doctor frontend: https://medicare-fend.netlify.app/
 - Admin dashboard: https://medicare-adm.netlify.app/
 
-![Demo App](frontend/public/screenshot-for-readme.png)
+[![Demo App](frontend/src/assets/BannerImg.png)](https://medicare-fend.netlify.app/)
 
 ## Overview
 
@@ -126,9 +126,3 @@ These are currently default Vite templates and can be updated later with more ap
 - No root `README.md` existed before this file.
 - The workspace appears structurally sound with three separate install/run targets.
 - No fatal syntax or package structure issues were found during this review.
-
-
-## Live Demo Links
-
-- Patient / Doctor frontend: https://medicare-fend.netlify.app/
-- Admin dashboard: https://medicare-adm.netlify.app/
